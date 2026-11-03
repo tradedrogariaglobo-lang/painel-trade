@@ -2073,8 +2073,8 @@ async function salvarAcordo() {
     observacao: document.getElementById('f-observacao').value.trim(),
     valor_total: total, qtde_parcelas: qtde,
     cat_visibilidade: cat,
-    visibilidade: document.getElementById('f-visibilidade').value.trim(),
-    valor_visibilidade: parseFloat(document.getElementById('f-valor-vis').value)||0,
+    visibilidade: '',
+    valor_visibilidade: 0,
     tipo_parcela: document.getElementById('f-tipo-parcela').value,
     status_plano: 1,
     criado_em: new Date().toISOString(),
@@ -2146,7 +2146,7 @@ function limparForm() {
   formVis = []; renderFormVis();
   if (document.getElementById('f-planograma')) document.getElementById('f-planograma').value = '';
   if (document.getElementById('f-observacao')) document.getElementById('f-observacao').value = '';
-  ['f-nome','f-n-acordo','f-visibilidade','f-valor-total','f-valor-vis'].forEach(id=>{
+  ['f-nome','f-n-acordo','f-valor-total'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('parcelas-preview').style.display='none';
