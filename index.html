@@ -775,7 +775,7 @@ img,svg{max-width:100%;}
           </div>
           <div class="fg">
             <label>Valor Total do Acordo (R$) *</label>
-            <input type="number" id="f-valor-total" placeholder="0,00" min="0" step="0.01" oninput="gerarParcelas()">
+            <input type="text" id="f-valor-total" class="money-input" placeholder="R$ 0,00" oninput="gerarParcelas()">
           </div>
         </div>
 
@@ -797,7 +797,7 @@ img,svg{max-width:100%;}
           </div>
           <div class="fg">
             <label>Valor de investimento (R$)</label>
-            <input type="number" id="f-vis-valor" placeholder="0,00" min="0" step="0.01">
+            <input type="text" id="f-vis-valor" class="money-input" placeholder="R$ 0,00">
           </div>
           <div class="fg" style="justify-content:flex-end">
             <button type="button" class="btn btn-primary btn-sm" onclick="addVisibilidade()">+ Adicionar</button>
@@ -1084,7 +1084,7 @@ img,svg{max-width:100%;}
         <div class="form-grid">
           <div class="fg">
             <label>Valor da meta (R$)</label>
-            <input type="number" id="cfg-meta" min="0" step="1000">
+            <input type="text" id="cfg-meta" class="money-input" placeholder="R$ 0,00">
           </div>
           <div class="fg" style="justify-content:flex-end">
             <button class="btn btn-primary" onclick="salvarMetaConfig()">Salvar meta</button>
@@ -1183,7 +1183,7 @@ img,svg{max-width:100%;}
     <div class="modal-title">Editar meta anual da carteira</div>
     <div class="fg">
       <label>Valor da meta (R$)</label>
-      <input type="number" id="modal-meta-val" min="0" step="1000">
+      <input type="text" id="modal-meta-val" class="money-input" placeholder="R$ 0,00">
     </div>
     <div style="font-size:11px;color:var(--gray);line-height:1.45">Vale para toda a carteira e para as três telas do painel.</div>
     <div class="modal-footer">
@@ -1320,6 +1320,48 @@ create policy "public_all_tarefas" on kb_tarefas for all using (true) with check
 */
 // ══════════════════════════════════════════════
 
+// ── MÁSCARA MONETÁRIA R$ ──
+function fmtMoney(v) {
+  // Recebe número e retorna string R$ 40.000,00
+  if (v == null || isNaN(v)) return 'R$ 0,00';
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function parseMoney(str) {
+  // Recebe string "R$ 40.000,00" ou "40000.00" e retorna float
+  if (typeof str === 'number') return str;
+  if (!str) return 0;
+  str = String(str).replace(/^R\$\s*/i, '').trim();
+  // Se tem vírgula como decimal (padrão BR): remove pontos de milhar, troca vírgula por ponto
+  if (str.includes(',')) {
+    str = str.replace(/\./g, '').replace(',', '.');
+  }
+  return parseFloat(str) || 0;
+}
+function moneyMask(el) {
+  // Aplica máscara ao digitar em um campo
+  el.addEventListener('input', function() {
+    let raw = this.value.replace(/[^\d]/g, '');
+    if (!raw) { this.value = ''; return; }
+    let num = parseInt(raw, 10) / 100;
+    this.value = fmtMoney(num);
+    this.dispatchEvent(new Event('masked', { bubbles: true }));
+  });
+  el.addEventListener('focus', function() {
+    // seleciona tudo ao focar para facilitar redigitar
+    setTimeout(() => this.select(), 20);
+  });
+}
+function moneyVal(id) {
+  // Retorna o valor numérico de um campo com máscara
+  const el = document.getElementById(id);
+  return el ? parseMoney(el.value) : 0;
+}
+
+// Aplica máscara em todos os campos com classe .money-input ao carregar
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.money-input').forEach(moneyMask);
+});
+
 if (window.Chart) Chart.defaults.font.family = "'Nunito', system-ui, sans-serif";
 let   META = 14000000;
 const SENHA_GERENCIA = 'trade2027';
@@ -1438,12 +1480,12 @@ function confirmarSenha() {
 
 // ── EDIÇÃO DA META PELO CARD ──
 function abrirEditMeta(){ pedirSenha(()=>{
-  document.getElementById('modal-meta-val').value = META;
+  document.getElementById('modal-meta-val').value = fmtMoney(META);
   document.getElementById('modal-meta-bg').classList.add('open');
 }, 'Editar meta anual'); }
 function fecharMeta(){ document.getElementById('modal-meta-bg').classList.remove('open'); }
 async function salvarMetaModal() {
-  const v = parseFloat(document.getElementById('modal-meta-val').value);
+  const v = moneyVal('modal-meta-val');
   if (!v || v <= 0) { toast('Informe um valor de meta válido.'); return; }
   try {
     CFG.meta_anual = v; await saveConfig();
@@ -1505,7 +1547,7 @@ function cfgItemHtml(grupo, nome) {
 
 function renderConfig() {
   if (!cfgLiberado) return;
-  document.getElementById('cfg-meta').value = META;
+  document.getElementById('cfg-meta').value = fmtMoney(META);
   // trades, tipos, visibilidades: lista simples
   ['trades','tipos','visibilidades'].forEach(grupo => {
     const m = CFG_META[grupo];
@@ -1544,7 +1586,7 @@ function renderConfigInd() {
 }
 
 async function salvarMetaConfig() {
-  const v = parseFloat(document.getElementById('cfg-meta').value);
+  const v = moneyVal('cfg-meta');
   if (!v || v <= 0) { toast('Informe um valor de meta válido.'); return; }
   try { CFG.meta_anual = v; await saveConfig(); toast('Meta anual atualizada!'); atualizarTudo(); }
   catch(e) { toast('Erro ao salvar a meta.'); console.error(e); }
@@ -1947,7 +1989,7 @@ function updateMeta() {
 // ── VISIBILIDADES DO FORMULÁRIO ──
 function addVisibilidade() {
   const tipo = document.getElementById('f-vis-tipo').value;
-  const val  = parseFloat(document.getElementById('f-vis-valor').value) || 0;
+  const val  = moneyVal('f-vis-valor');
   if (!tipo) { toast('Selecione um tipo de visibilidade.'); return; }
   if (val <= 0) { toast('Informe o valor de investimento.'); return; }
   formVis.push({ tipo, valor: val });
@@ -1959,7 +2001,7 @@ function removeVisibilidade(i) { formVis.splice(i,1); renderFormVis(); }
 function renderFormVis() {
   const el = document.getElementById('vis-lista');
   const tot = document.getElementById('vis-totalizador');
-  const valorAcordo = parseFloat(document.getElementById('f-valor-total').value) || 0;
+  const valorAcordo = moneyVal('f-valor-total');
   const somaVis = formVis.reduce((s,v)=>s+v.valor,0);
   el.innerHTML = formVis.map((v,i) =>
     `<div class="vis-item">
@@ -1987,7 +2029,7 @@ function updateBadge() {
 const MESES = ["Jan/26", "Fev/26", "Mar/26", "Abr/26", "Mai/26", "Jun/26", "Jul/26", "Ago/26", "Set/26", "Out/26", "Nov/26", "Dez/26", "Jan/27", "Fev/27", "Mar/27"];
 function gerarParcelas() {
   const qtde = parseInt(document.getElementById('f-qtde-parcelas').value)||0;
-  const total = parseFloat(document.getElementById('f-valor-total').value)||0;
+  const total = moneyVal('f-valor-total');
   const prev = document.getElementById('parcelas-preview');
   const items = document.getElementById('parcelas-items');
   if (!qtde) { prev.style.display='none'; return; }
@@ -2006,7 +2048,7 @@ function gerarParcelas() {
         <select id="parc-comp-${i}">${mesOpts}</select>
       </div>
       <div class="pi-val">
-        <input type="number" id="parc-val-${i}" value="${valParcela.toFixed(2)}" min="0" step="0.01" placeholder="Valor">
+        <input type="text" id="parc-val-${i}" value="${fmtMoney(valParcela)}" class="money-input" placeholder="R$ 0,00">
       </div>
       <div class="pi-status">
         <select id="parc-status-${i}">
@@ -2020,6 +2062,7 @@ function gerarParcelas() {
     </div>`;
   }
   items.innerHTML = html;
+  items.querySelectorAll('.money-input').forEach(moneyMask);
 }
 
 // ── SALVAR ACORDO ──
@@ -2027,7 +2070,7 @@ async function salvarAcordo() {
   const trade   = document.getElementById('f-trade').value;
   const nome    = document.getElementById('f-nome').value.trim();
   const indus   = document.getElementById('f-industria').value.trim();
-  const total   = parseFloat(document.getElementById('f-valor-total').value)||0;
+  const total   = moneyVal('f-valor-total');
   const qtde    = parseInt(document.getElementById('f-qtde-parcelas').value)||0;
   const cat     = document.getElementById('f-cat-vis').value;
 
@@ -2093,7 +2136,7 @@ async function salvarAcordo() {
       numero: i,
       competencia: compEl ? compEl.value : '',
       execucao: '',
-      valor_previsto: parseFloat(valEl?.value||0),
+      valor_previsto: parseMoney(valEl?.value||0),
       valor_recebido: 0,
       status: stEl ? stEl.value : 'previsto',
       criado_em: new Date().toISOString(),
@@ -2797,8 +2840,8 @@ function openParcModal(id) {
           ${MESES.map(m=>`<option ${m===p.competencia?'selected':''}>${m}</option>`).join('')}
         </select>
       </td>
-      <td><input type="number" id="pm-prev-${p.id}" value="${p.valor_previsto||0}" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);width:100%;font-family:var(--font)"></td>
-      <td><input type="number" id="pm-rec-${p.id}" value="${p.valor_recebido||0}" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);width:100%;font-family:var(--font)"></td>
+      <td><input type="text" id="pm-prev-${p.id}" value="${fmtMoney(p.valor_previsto||0)}" class="money-input" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);width:100%;font-family:var(--font)"></td>
+      <td><input type="text" id="pm-rec-${p.id}" value="${fmtMoney(p.valor_recebido||0)}" class="money-input" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);width:100%;font-family:var(--font)"></td>
       <td>
         <select id="pm-status-${p.id}" style="font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--border);font-family:var(--font)">
           <option value="previsto" ${p.status==='previsto'?'selected':''}>A receber</option>
@@ -2811,6 +2854,7 @@ function openParcModal(id) {
     </tr>`).join('');
   }
   document.getElementById('modal-parcelas-bg').classList.add('open');
+  document.querySelectorAll('#modal-parcelas-tbody .money-input').forEach(moneyMask);
 }
 function closeParcModal() { document.getElementById('modal-parcelas-bg').classList.remove('open'); }
 async function salvarParcelas() {
@@ -2818,8 +2862,8 @@ async function salvarParcelas() {
   try {
     for (const p of ps) {
       const comp   = document.getElementById('pm-comp-'+p.id)?.value || p.competencia;
-      const prev   = parseFloat(document.getElementById('pm-prev-'+p.id)?.value)||0;
-      const rec    = parseFloat(document.getElementById('pm-rec-'+p.id)?.value)||0;
+      const prev   = parseMoney(document.getElementById('pm-prev-'+p.id)?.value);
+      const rec    = parseMoney(document.getElementById('pm-rec-'+p.id)?.value);
       const status = document.getElementById('pm-status-'+p.id)?.value || p.status;
       if (USE_SB) await sbFetch('parcelas_acordo?id=eq.'+p.id,{method:'PATCH',body:JSON.stringify({competencia:comp,valor_previsto:prev,valor_recebido:rec,status,atualizado_em:new Date().toISOString()})});
       const idx = parcelas.findIndex(x=>x.id===p.id);
