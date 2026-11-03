@@ -429,6 +429,24 @@ header.header{background:var(--royal);height:70px;padding:0 28px;border-bottom:3
   .nav-btn{white-space:nowrap;padding:7px 12px;}
 }
 
+/* ════════ BUSCA CONFIGURAÇÕES ════════ */
+.cfg-search{font-family:var(--font);font-size:13px;color:var(--text);background:var(--white);
+  border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;outline:none;width:100%;margin-bottom:10px;}
+.cfg-search:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(58,122,196,.18);}
+.cfg-pager{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;}
+.cfg-pager button{font-family:var(--font);font-size:11px;font-weight:700;padding:5px 12px;border-radius:7px;
+  border:1.5px solid var(--border);background:var(--white);color:var(--gray);cursor:pointer;}
+.cfg-pager button:hover{background:var(--ice);}
+.cfg-pager button:disabled{opacity:.4;cursor:default;}
+.cfg-pager span{font-size:11px;color:var(--gray);}
+
+/* ════════ VIS LISTA ════════ */
+.vis-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--ice2);border:1.5px solid var(--border);border-radius:9px;margin-bottom:5px;font-size:13px;}
+.vis-item-tipo{font-weight:700;color:var(--navy);flex:1;}
+.vis-item-val{font-weight:700;font-variant-numeric:tabular-nums;color:var(--royal);}
+.vis-item-del{background:none;border:none;color:var(--gray);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:5px;}
+.vis-item-del:hover{background:#FEE2E2;color:var(--danger);}
+
 /* ════════ META: BOTÃO EDITAR ════════ */
 .meta-card{position:relative;}
 .meta-edit{position:absolute;top:18px;right:68px;width:30px;height:30px;border-radius:50%;
@@ -690,6 +708,10 @@ img,svg{max-width:100%;}
           <option value="done">Feito</option>
         </select>
       </div>
+      <div class="fg full">
+        <label>Comentários adicionais</label>
+        <textarea id="kb-coment" rows="3" placeholder="Observações, anotações, links..."></textarea>
+      </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;">
       <button class="btn btn-danger btn-sm" id="kb-del-btn" onclick="deletarKbTarefa()" style="display:none">Excluir</button>
@@ -758,25 +780,34 @@ img,svg{max-width:100%;}
         </div>
 
         <div class="form-section-title"><span>2</span> Tipo de ação</div>
-        <div class="form-grid three">
+        <div class="form-grid">
           <div class="fg">
             <label>Tipo de ação *</label>
             <select id="f-cat-vis">
               <option value="">Selecione...</option>
-              <option>Plano Trade</option><option>Convenção</option><option>Globo Run</option><option>Sazonal / Datas</option><option>Treinamento</option><option>Outras ações</option>
             </select>
-          </div>
-          <div class="fg">
-            <label>Descrição da ação</label>
-            <input type="text" id="f-visibilidade" placeholder="Ex: PLANO DE TRADE 2026">
-          </div>
-          <div class="fg">
-            <label>Valor da visibilidade (R$)</label>
-            <input type="number" id="f-valor-vis" placeholder="0,00" min="0" step="0.01">
           </div>
         </div>
 
-        <div class="form-section-title"><span>3</span> Parcelamento</div>
+        <div class="form-section-title"><span>3</span> Visibilidade</div>
+        <div class="form-grid three">
+          <div class="fg">
+            <label>Tipo de visibilidade</label>
+            <select id="f-vis-tipo"><option value="">Selecione...</option></select>
+          </div>
+          <div class="fg">
+            <label>Valor de investimento (R$)</label>
+            <input type="number" id="f-vis-valor" placeholder="0,00" min="0" step="0.01">
+          </div>
+          <div class="fg" style="justify-content:flex-end">
+            <button type="button" class="btn btn-primary btn-sm" onclick="addVisibilidade()">+ Adicionar</button>
+          </div>
+        </div>
+        <div id="vis-lista" style="margin-top:4px"></div>
+        <div id="vis-totalizador" style="display:none;padding:10px 14px;background:var(--ice2);border:1.5px solid var(--border);border-radius:9px;margin-top:8px;font-size:13px;font-weight:700;display:flex;justify-content:space-between">
+        </div>
+
+        <div class="form-section-title"><span>4</span> Parcelamento</div>
         <div class="form-grid">
           <div class="fg">
             <label>Quantidade de parcelas *</label>
@@ -798,13 +829,23 @@ img,svg{max-width:100%;}
 
         <!-- Preview das parcelas -->
         <div id="parcelas-preview" style="display:none">
-          <div class="form-section-title" style="margin-top:4px"><span>4</span> Parcelas — Competência, Valor e Status</div>
+          <div class="form-section-title" style="margin-top:4px"><span>5</span> Parcelas — Competência, Valor e Status</div>
           <div class="parcela-preview-list">
             <div class="parcela-preview-item header">
               <div>Nº</div><div>Competência</div><div>Valor (R$)</div><div>Status</div>
             </div>
             <div id="parcelas-items"></div>
           </div>
+        </div>
+
+        <div class="form-section-title"><span>6</span> Planograma</div>
+        <div class="fg">
+          <label style="font-style:italic;font-weight:400;color:var(--gray);text-transform:none;letter-spacing:0;font-size:12px">Subir em um único arquivo</label>
+          <input type="file" id="f-planograma" accept="image/*,.pdf" style="font-size:13px;padding:8px 12px">
+        </div>
+        <div class="fg">
+          <label>Observação do acordo</label>
+          <textarea id="f-observacao" rows="2" placeholder="Observações gerais sobre o acordo..."></textarea>
         </div>
 
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
@@ -821,6 +862,7 @@ img,svg{max-width:100%;}
     <div class="card-head">
       <div class="card-title">Acordos lançados</div>
       <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="filter-industria-list" oninput="renderListaAcordos()" placeholder="Buscar indústria..." style="font-size:12px;padding:5px 9px;border:1.5px solid var(--border);border-radius:7px;background:var(--white);font-family:var(--font);width:150px">
         <select id="filter-trade-list" onchange="renderListaAcordos()" style="font-size:12px;padding:5px 9px;border:1.5px solid var(--border);border-radius:7px;background:var(--white);font-family:var(--font)">
           <option value="">Todos os trades</option>
           <option>LAÍS</option><option>MATHEUS</option><option>JOÃO VITOR</option><option>SARA</option>
@@ -1086,11 +1128,28 @@ img,svg{max-width:100%;}
 
     <div class="card mb">
       <div class="card-head">
+        <div class="card-title">Tipos de visibilidade</div>
+        <div class="card-badge" id="cfg-badge-visibilidades">0</div>
+      </div>
+      <div class="card-body">
+        <div id="cfg-lista-visibilidades"></div>
+        <div class="cfg-add">
+          <input type="text" id="cfg-novo-visibilidade" placeholder="Nome do novo tipo de visibilidade">
+          <button class="btn btn-primary" onclick="addItemCfg('visibilidades')">Adicionar</button>
+        </div>
+        <div class="cfg-aviso">Renomear atualiza os acordos que já usam o tipo. Só é possível excluir tipos sem vínculo.</div>
+      </div>
+    </div>
+
+    <div class="card mb">
+      <div class="card-head">
         <div class="card-title">Indústrias / Fornecedores</div>
         <div class="card-badge" id="cfg-badge-industrias">0</div>
       </div>
       <div class="card-body">
+        <input type="text" class="cfg-search" id="cfg-busca-industria" oninput="renderConfigInd()" placeholder="Buscar indústria...">
         <div id="cfg-lista-industrias"></div>
+        <div class="cfg-pager" id="cfg-pager-industria"></div>
         <div class="cfg-add">
           <input type="text" id="cfg-novo-industria" placeholder="Nome da nova indústria">
           <button class="btn btn-primary" onclick="addItemCfg('industrias')">Adicionar</button>
@@ -1266,6 +1325,8 @@ let   META = 14000000;
 const SENHA_GERENCIA = 'trade2027';
 const CFG_PADRAO = { meta_anual:14000000, trades:[], tipos:[], industrias:[] };
 let   CFG = JSON.parse(JSON.stringify(CFG_PADRAO));
+let   formVis = [];   // visibilidades do acordo sendo criado
+let   visibilidades = []; // todas do banco
 const PALETA_TRADE = ['#3A7AC4','#1E8A4C','#EF3747','#F4A811','#8B5CF6','#0E7490','#B45309','#60708A'];
 function corTrade(t){ const i = CFG.trades.indexOf(t); return PALETA_TRADE[(i<0?0:i) % PALETA_TRADE.length]; }
 const STEPS = ['Reunião inicial','VB analisado','VB ao Compras','Lojas Smarkett','Acordo criado','Plano Ativo'];
@@ -1314,6 +1375,7 @@ async function loadConfig() {
   if (!CFG.trades     || !CFG.trades.length)     CFG.trades     = unicos(acordos.map(a=>a.trade));
   if (!CFG.tipos      || !CFG.tipos.length)      CFG.tipos      = unicos(acordos.map(a=>a.cat_visibilidade));
   if (!CFG.industrias || !CFG.industrias.length) CFG.industrias = unicos(acordos.map(a=>a.industria));
+  if (!CFG.visibilidades || !CFG.visibilidades.length) CFG.visibilidades = ['PDV','DIGITAL','TREINAMENTO','AÇÕES','AÇÕES DE EXPERIÊNCIA COM SHOPPER'];
   META = Number(CFG.meta_anual) || 14000000;
 }
 
@@ -1346,6 +1408,7 @@ function aplicarConfig() {
   set('f-cat-vis',        montar(CFG.tipos,'Selecione...'));
   set('acomp-filter-cat', montar(CFG.tipos,'Todos'));
   set('kb-forn', montar(CFG.industrias,'Selecione...') + '<option value="Geral">Geral (sem fornecedor)</option>');
+  set('f-vis-tipo', montar(CFG.visibilidades,'Selecione...'));
   const dl = document.getElementById('lista-industrias');
   if (dl) dl.innerHTML = CFG.industrias.map(x=>`<option value="${x}">`).join('');
 }
@@ -1402,9 +1465,10 @@ function atualizarTudo() {
 // ══════════════════════════════════════════════
 let cfgLiberado = false;
 const CFG_META = {
-  trades:     { titulo:'trade',          lista:'cfg-lista-trades',     badge:'cfg-badge-trades',     input:'cfg-novo-trade' },
-  tipos:      { titulo:'tipo de ação',   lista:'cfg-lista-tipos',      badge:'cfg-badge-tipos',      input:'cfg-novo-tipo' },
-  industrias: { titulo:'indústria',      lista:'cfg-lista-industrias', badge:'cfg-badge-industrias', input:'cfg-novo-industria' }
+  trades:        { titulo:'trade',               lista:'cfg-lista-trades',        badge:'cfg-badge-trades',        input:'cfg-novo-trade' },
+  tipos:         { titulo:'tipo de ação',        lista:'cfg-lista-tipos',         badge:'cfg-badge-tipos',         input:'cfg-novo-tipo' },
+  visibilidades: { titulo:'visibilidade',        lista:'cfg-lista-visibilidades', badge:'cfg-badge-visibilidades', input:'cfg-novo-visibilidade' },
+  industrias:    { titulo:'indústria',           lista:'cfg-lista-industrias',    badge:'cfg-badge-industrias',    input:'cfg-novo-industria' }
 };
 
 function liberarConfig() {
@@ -1420,27 +1484,63 @@ function usosDe(grupo, nome) {
     return acordos.filter(a=>a.trade===nome).length + tarefas.filter(t=>t.trade===nome).length;
   if (grupo === 'tipos')
     return acordos.filter(a=>a.cat_visibilidade===nome).length;
+  if (grupo === 'visibilidades')
+    return visibilidades.filter(v=>v.tipo===nome).length;
   return acordos.filter(a=>a.industria===nome).length + tarefas.filter(t=>t.fornecedor===nome).length;
+}
+
+let cfgIndPag = 0;
+const CFG_IND_PER_PAGE = 5;
+
+function cfgItemHtml(grupo, nome) {
+  const n = usosDe(grupo, nome);
+  const esc = nome.replace(/'/g,"\\'");
+  return `<div class="cfg-item">
+    <div class="cfg-item-nome">${nome}</div>
+    <div class="cfg-item-uso">${n} ${n===1?'uso':'usos'}</div>
+    <button class="icon-btn" title="Renomear" onclick="abrirRenomear('${grupo}','${esc}')">&#9998;</button>
+    <button class="icon-btn" title="Excluir" onclick="removerItemCfg('${grupo}','${esc}')">&#10005;</button>
+  </div>`;
 }
 
 function renderConfig() {
   if (!cfgLiberado) return;
   document.getElementById('cfg-meta').value = META;
-  Object.keys(CFG_META).forEach(grupo => {
+  // trades, tipos, visibilidades: lista simples
+  ['trades','tipos','visibilidades'].forEach(grupo => {
     const m = CFG_META[grupo];
     const lista = CFG[grupo] || [];
     document.getElementById(m.badge).textContent = lista.length + (lista.length===1?' item':' itens');
     const el = document.getElementById(m.lista);
-    el.innerHTML = lista.length ? lista.map(nome => {
-      const n = usosDe(grupo, nome);
-      return `<div class="cfg-item">
-        <div class="cfg-item-nome">${nome}</div>
-        <div class="cfg-item-uso">${n} ${n===1?'uso':'usos'}</div>
-        <button class="icon-btn" title="Renomear" onclick="abrirRenomear('${grupo}','${nome.replace(/'/g,"\\'")}')">&#9998;</button>
-        <button class="icon-btn" title="Excluir" onclick="removerItemCfg('${grupo}','${nome.replace(/'/g,"\\'")}')">&#10005;</button>
-      </div>`;
-    }).join('') : '<div style="font-size:12px;color:var(--gray);padding:6px 0">Nenhum item cadastrado.</div>';
+    el.innerHTML = lista.length
+      ? lista.map(nome => cfgItemHtml(grupo, nome)).join('')
+      : '<div style="font-size:12px;color:var(--gray);padding:6px 0">Nenhum item cadastrado.</div>';
   });
+  // indústrias: paginadas com busca
+  renderConfigInd();
+}
+
+function renderConfigInd() {
+  const busca = (document.getElementById('cfg-busca-industria')?.value||'').toUpperCase().trim();
+  const todas = (CFG.industrias || []);
+  const filtradas = busca ? todas.filter(n=>n.toUpperCase().includes(busca)) : todas;
+  const total = filtradas.length;
+  const pages = Math.max(1, Math.ceil(total / CFG_IND_PER_PAGE));
+  cfgIndPag = Math.min(cfgIndPag, pages-1);
+  const start = cfgIndPag * CFG_IND_PER_PAGE;
+  const pagina = filtradas.slice(start, start + CFG_IND_PER_PAGE);
+
+  document.getElementById('cfg-badge-industrias').textContent = todas.length + (todas.length===1?' item':' itens') + (busca?' ('+total+' filtradas)':'');
+  const el = document.getElementById('cfg-lista-industrias');
+  el.innerHTML = pagina.length
+    ? pagina.map(nome => cfgItemHtml('industrias', nome)).join('')
+    : '<div style="font-size:12px;color:var(--gray);padding:6px 0">Nenhuma indústria encontrada.</div>';
+  const pager = document.getElementById('cfg-pager-industria');
+  if (total > CFG_IND_PER_PAGE) {
+    pager.innerHTML = `<button onclick="cfgIndPag=Math.max(0,cfgIndPag-1);renderConfigInd()" ${cfgIndPag===0?'disabled':''}>← Anterior</button>
+      <span>${cfgIndPag+1} de ${pages}</span>
+      <button onclick="cfgIndPag=Math.min(${pages-1},cfgIndPag+1);renderConfigInd()" ${cfgIndPag>=pages-1?'disabled':''}>Próxima →</button>`;
+  } else { pager.innerHTML = ''; }
 }
 
 async function salvarMetaConfig() {
@@ -1513,6 +1613,9 @@ async function renomearEmCascata(grupo, antigo, novo) {
   } else if (grupo === 'tipos') {
     if (USE_SB) await sbFetch('acordos_trade?cat_visibilidade=eq.'+enc, {method:'PATCH', prefer:'return=minimal', body:JSON.stringify({cat_visibilidade:novo})});
     acordos.forEach(a => { if (a.cat_visibilidade === antigo) a.cat_visibilidade = novo; });
+  } else if (grupo === 'visibilidades') {
+    if (USE_SB) await sbFetch('visibilidades_acordo?tipo=eq.'+enc, {method:'PATCH', prefer:'return=minimal', body:JSON.stringify({tipo:novo})});
+    visibilidades.forEach(v => { if (v.tipo === antigo) v.tipo = novo; });
   } else {
     if (USE_SB) {
       await sbFetch('acordos_trade?industria=eq.'+enc, {method:'PATCH', prefer:'return=minimal', body:JSON.stringify({industria:novo})});
@@ -1552,13 +1655,15 @@ async function loadAll() {
       sbFetch('acordos_trade?order=criado_em.desc'),
       sbFetch('parcelas_acordo?order=numero.asc')
     ]);
-  } catch(e) { console.error(e); acordos=[]; parcelas=[]; }
+    visibilidades = await sbFetch('visibilidades_acordo?order=criado_em.asc').catch(()=>[]);
+  } catch(e) { console.error(e); acordos=[]; parcelas=[]; visibilidades=[]; }
 }
 
 function saveLocal() {
   if (!USE_SB) {
     localStorage.setItem('ат_acordos', JSON.stringify(acordos));
     localStorage.setItem('ат_parcelas', JSON.stringify(parcelas));
+    localStorage.setItem('ат_vis', JSON.stringify(visibilidades));
   }
 }
 
@@ -1716,6 +1821,7 @@ function kbCardHtml(t) {
     <button class="kb-card-menu" onclick="event.stopPropagation();openKbModal('${t.id}')">···</button>
     <div class="kb-card-title">${t.titulo}</div>
     ${t.descricao ? `<div class="kb-card-desc">${t.descricao}</div>` : '<div class="kb-card-desc"></div>'}
+    ${t.comentarios ? `<div style="font-size:10px;color:var(--gray);margin-bottom:6px;line-height:1.35;border-left:2px solid var(--border);padding-left:6px">${t.comentarios.length>80?t.comentarios.slice(0,80)+'…':t.comentarios}</div>` : ''}
     <div class="kb-card-tags">
       ${t.fornecedor ? `<span class="kb-forn-tag ${kbFornCls(t.fornecedor)}">${t.fornecedor}</span>` : ''}
       ${t.prioridade ? `<span class="kb-prio prio-${t.prioridade}">${pLbl}</span>` : ''}
@@ -1757,6 +1863,7 @@ function openKbModal(id) {
   document.getElementById('kb-prio').value    = t?.prioridade|| 'media';
   document.getElementById('kb-data').value    = t?.data      || '';
   document.getElementById('kb-status').value  = t?.status    || 'todo';
+  document.getElementById('kb-coment').value  = t?.comentarios || '';
   document.getElementById('kb-del-btn').style.display = t ? 'inline-flex' : 'none';
   document.getElementById('kb-modal-bg').classList.add('open');
 }
@@ -1774,6 +1881,7 @@ async function salvarKbTarefa() {
     prioridade:  document.getElementById('kb-prio').value,
     data:        document.getElementById('kb-data').value,
     status:      document.getElementById('kb-status').value,
+    comentarios: document.getElementById('kb-coment').value.trim(),
   };
   try {
     if (kbEditId) { await updateTarefa(kbEditId,d); toast('Tarefa atualizada!'); }
@@ -1836,6 +1944,39 @@ function updateMeta() {
   });
 }
 
+// ── VISIBILIDADES DO FORMULÁRIO ──
+function addVisibilidade() {
+  const tipo = document.getElementById('f-vis-tipo').value;
+  const val  = parseFloat(document.getElementById('f-vis-valor').value) || 0;
+  if (!tipo) { toast('Selecione um tipo de visibilidade.'); return; }
+  if (val <= 0) { toast('Informe o valor de investimento.'); return; }
+  formVis.push({ tipo, valor: val });
+  document.getElementById('f-vis-tipo').value = '';
+  document.getElementById('f-vis-valor').value = '';
+  renderFormVis();
+}
+function removeVisibilidade(i) { formVis.splice(i,1); renderFormVis(); }
+function renderFormVis() {
+  const el = document.getElementById('vis-lista');
+  const tot = document.getElementById('vis-totalizador');
+  const valorAcordo = parseFloat(document.getElementById('f-valor-total').value) || 0;
+  const somaVis = formVis.reduce((s,v)=>s+v.valor,0);
+  el.innerHTML = formVis.map((v,i) =>
+    `<div class="vis-item">
+      <div class="vis-item-tipo">${v.tipo}</div>
+      <div class="vis-item-val">${fmt(v.valor)}</div>
+      <button class="vis-item-del" onclick="removeVisibilidade(${i})">&times;</button>
+    </div>`).join('');
+  if (formVis.length) {
+    const ok = Math.abs(somaVis - valorAcordo) < 0.02;
+    const cor = ok ? 'var(--success)' : 'var(--danger)';
+    tot.style.display = 'flex';
+    tot.innerHTML = `<span>Soma das visibilidades: <span style="color:${cor}">${fmt(somaVis)}</span></span>
+      <span>Valor do acordo: ${fmt(valorAcordo)}</span>
+      ${ok ? '<span style="color:var(--success)">✓ OK</span>' : '<span style="color:var(--danger)">✗ Divergente</span>'}`;
+  } else { tot.style.display = 'none'; }
+}
+
 // ── BADGE FORM ──
 function updateBadge() {
   const v = document.getElementById('f-trade').value;
@@ -1894,10 +2035,42 @@ async function salvarAcordo() {
     toast('Preencha os campos obrigatórios (*)'); return;
   }
 
+  // Validar visibilidades se houver alguma
+  if (formVis.length) {
+    const somaVis = formVis.reduce((s,v)=>s+v.valor,0);
+    if (Math.abs(somaVis - total) >= 0.02) {
+      toast('A soma das visibilidades ('+fmt(somaVis)+') diverge do valor total do acordo ('+fmt(total)+'). Ajuste antes de salvar.');
+      return;
+    }
+  }
+
+  // Upload de planograma
+  let planograma_url = '', planograma_nome = '';
+  const fileInput = document.getElementById('f-planograma');
+  if (fileInput && fileInput.files.length) {
+    const file = fileInput.files[0];
+    planograma_nome = file.name;
+    if (USE_SB) {
+      try {
+        const ext = file.name.split('.').pop();
+        const path = 'acordos/' + uid() + '.' + ext;
+        const resp = await fetch(SUPABASE_URL+'/storage/v1/object/planogramas/'+path, {
+          method:'POST',
+          headers: { 'apikey':SUPABASE_KEY, 'Authorization':'Bearer '+SUPABASE_KEY, 'Content-Type':file.type },
+          body: file
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        planograma_url = SUPABASE_URL+'/storage/v1/object/public/planogramas/'+path;
+      } catch(e) { console.error('Upload falhou:',e); toast('Erro ao enviar planograma. Acordo será salvo sem o arquivo.'); }
+    }
+  }
+
   const acordo = {
     id: uid(),
     n_acordo: document.getElementById('f-n-acordo').value.trim(),
     nome, industria: indus, trade,
+    planograma_url, planograma_nome,
+    observacao: document.getElementById('f-observacao').value.trim(),
     valor_total: total, qtde_parcelas: qtde,
     cat_visibilidade: cat,
     visibilidade: document.getElementById('f-visibilidade').value.trim(),
@@ -1932,12 +2105,19 @@ async function salvarAcordo() {
     if (USE_SB) {
       const [row] = await sbFetch('acordos_trade', {method:'POST', body:JSON.stringify({
         n_acordo:acordo.n_acordo, nome:acordo.nome, industria:acordo.industria, trade:acordo.trade,
+        planograma_url:acordo.planograma_url, planograma_nome:acordo.planograma_nome, observacao:acordo.observacao,
         valor_total:acordo.valor_total, qtde_parcelas:acordo.qtde_parcelas,
         cat_visibilidade:acordo.cat_visibilidade, visibilidade:acordo.visibilidade,
         valor_visibilidade:acordo.valor_visibilidade, tipo_parcela:acordo.tipo_parcela, status_plano:1
       })});
       acordo.id = row.id;
       novParcelas.forEach(p=>p.acordo_id=row.id);
+      // Salvar visibilidades
+      if (formVis.length) {
+        await sbFetch('visibilidades_acordo', {method:'POST', body:JSON.stringify(
+          formVis.map(v=>({acordo_id:acordo.id, tipo:v.tipo, valor:v.valor}))
+        )});
+      }
       await sbFetch('parcelas_acordo', {method:'POST', body:JSON.stringify(novParcelas.map(p=>({
         acordo_id:p.acordo_id, numero:p.numero, competencia:p.competencia, execucao:p.execucao||'',
         valor_previsto:p.valor_previsto, valor_recebido:0, status:p.status
@@ -1946,6 +2126,7 @@ async function salvarAcordo() {
     } else {
       acordos.unshift(acordo);
       parcelas.push(...novParcelas);
+      if (formVis.length) visibilidades.push(...formVis.map(v=>({id:uid(),acordo_id:acordo.id,...v})));
       saveLocal();
     }
     toast('✅ Acordo salvo com sucesso!');
@@ -1962,6 +2143,9 @@ function limparForm() {
   ['f-trade','f-industria','f-cat-vis','f-qtde-parcelas','f-tipo-parcela'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
+  formVis = []; renderFormVis();
+  if (document.getElementById('f-planograma')) document.getElementById('f-planograma').value = '';
+  if (document.getElementById('f-observacao')) document.getElementById('f-observacao').value = '';
   ['f-nome','f-n-acordo','f-visibilidade','f-valor-total','f-valor-vis'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
@@ -1972,7 +2156,11 @@ function limparForm() {
 // ── RENDER LISTA ACORDOS ──
 function renderListaAcordos() {
   const trFilt = document.getElementById('filter-trade-list').value;
-  const list = trFilt ? acordos.filter(a=>a.trade===trFilt) : acordos;
+  const indFilt = (document.getElementById('filter-industria-list')?.value||'').toUpperCase().trim();
+  const list = acordos.filter(a =>
+    (!trFilt || a.trade===trFilt) &&
+    (!indFilt || (a.industria||'').toUpperCase().includes(indFilt))
+  );
   document.getElementById('badge-total-acordos').textContent = list.length+' acordo'+(list.length!==1?'s':'');
   const tbody = document.getElementById('lista-acordos-tbody');
   if (!list.length) {
@@ -1981,7 +2169,7 @@ function renderListaAcordos() {
   }
   tbody.innerHTML = list.map(a=>`
   <tr>
-    <td><div style="font-weight:700;font-size:13px">${a.nome}</div><div style="font-size:11px;color:var(--gray)">${a.n_acordo?'Nº '+a.n_acordo+' · ':''}${a.industria}</div></td>
+    <td><div style="font-weight:700;font-size:13px">${a.nome}</div><div style="font-size:11px;color:var(--gray)">${a.n_acordo?'Nº '+a.n_acordo+' · ':''}${a.industria}</div>${a.observacao?'<div style="font-size:10px;color:var(--gray);font-style:italic;margin-top:2px">'+a.observacao+'</div>':''}</td>
     <td><span style="font-weight:700;font-size:12px">${a.trade}</span></td>
     <td style="font-size:12px">${a.industria}</td>
     <td>${a.cat_visibilidade?`<span class="vis-tag">${a.cat_visibilidade}</span>`:'-'}</td>
@@ -1992,6 +2180,7 @@ function renderListaAcordos() {
       <div class="action-btns">
         <button class="icon-btn" title="Pipeline" onclick="openStatusModal('${a.id}')">📊</button>
         <button class="icon-btn" title="Parcelas" onclick="openParcModal('${a.id}')">💰</button>
+        ${a.planograma_url?'<a class="icon-btn" href="'+a.planograma_url+'" target="_blank" title="Planograma">📎</a>':''}
         <button class="icon-btn" title="Excluir" onclick="excluirAcordo('${a.id}')">✕</button>
       </div>
     </td>
