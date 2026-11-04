@@ -492,6 +492,14 @@ header.header{background:var(--royal);height:64px;padding:0 24px;border-bottom:2
 .rz-bar{height:9px;border-radius:4px;transition:width .6s ease;}
 @media(max-width:820px){.rz-grid{grid-template-columns:1fr;}}
 
+/* Faixa de indicadores dentro do card Contratos */
+.ger-contratos-stats{padding:18px 24px;border-bottom:1px solid var(--border);background:var(--ice2);}
+.ger-contratos-stats .rz-grid{gap:12px;}
+.ger-contratos-stats .rz-kpi{padding:13px 16px;background:var(--white);}
+.ger-contratos-stats .rz-kpi.destaque{background:var(--navy);}
+.ger-contratos-stats .rz-val{font-size:19px;}
+@media(max-width:600px){.ger-contratos-stats{padding:14px 16px;}}
+
 /* ════════ PAINEL GERENCIAL V2 ════════ */
 .ger-page{max-width:1200px;margin:0 auto;padding:28px 20px;}
 .ger-page .card{transition:box-shadow .2s ease,transform .15s ease;}
@@ -1035,28 +1043,17 @@ img,svg{max-width:100%;}
   <!-- ══ 4 KPIs ══ -->
   <div class="ger-kpi-row" id="ger-kpis"></div>
 
-  <!-- ══ REALIZAÇÃO + RECEBIMENTO ══ -->
-  <div class="ger-grid-2">
-    <div class="card">
-      <div class="card-head">
-        <div class="card-title">Realização da carteira</div>
-        <select id="ger-real-trade" onchange="renderRealizacao()" class="ger-table-select">
-          <option value="">Todos os trades</option>
-        </select>
-      </div>
-      <div class="card-body" id="ger-real-content"></div>
+  <!-- ══ RECEBIMENTO MENSAL ══ -->
+  <div class="card mb">
+    <div class="card-head">
+      <div class="card-title">Recebimento mensal</div>
+      <select id="ger-mes-sel" onchange="renderRecebimentoMensal()" class="ger-table-select">
+        <option value="">Mês...</option>
+        <option>Jan/26</option><option>Fev/26</option><option>Mar/26</option><option>Abr/26</option><option>Mai/26</option><option>Jun/26</option><option>Jul/26</option><option>Ago/26</option><option>Set/26</option><option>Out/26</option><option>Nov/26</option><option>Dez/26</option><option>Jan/27</option><option>Fev/27</option><option>Mar/27</option>
+      </select>
     </div>
-    <div class="card">
-      <div class="card-head">
-        <div class="card-title">Recebimento mensal</div>
-        <select id="ger-mes-sel" onchange="renderRecebimentoMensal()" class="ger-table-select">
-          <option value="">Mês...</option>
-          <option>Jan/26</option><option>Fev/26</option><option>Mar/26</option><option>Abr/26</option><option>Mai/26</option><option>Jun/26</option><option>Jul/26</option><option>Ago/26</option><option>Set/26</option><option>Out/26</option><option>Nov/26</option><option>Dez/26</option><option>Jan/27</option><option>Fev/27</option><option>Mar/27</option>
-        </select>
-      </div>
-      <div id="ger-mensal-content" style="padding:20px 24px">
-        <div style="text-align:center;color:var(--gray);font-size:13px;padding:20px 0">Selecione um mês acima</div>
-      </div>
+    <div id="ger-mensal-content" style="padding:20px 24px">
+      <div style="text-align:center;color:var(--gray);font-size:13px;padding:20px 0">Selecione um mês acima</div>
     </div>
   </div>
 
@@ -1087,6 +1084,7 @@ img,svg{max-width:100%;}
         </select>
       </div>
     </div>
+    <div id="ger-contratos-stats"></div>
     <div class="ger-table-scroll">
       <table class="atab">
         <thead>
@@ -1490,7 +1488,7 @@ function aplicarConfig() {
     if ([...el.options].some(o => o.value === antes)) el.value = antes;
   };
   ['f-trade','kb-trade'].forEach(id => set(id, montar(CFG.trades,'Selecione...')));
-  ['filter-trade-list','acomp-filter-trade','ger-filter-trade','kb-filter-trade','ger-real-trade']
+  ['filter-trade-list','acomp-filter-trade','ger-filter-trade','kb-filter-trade']
     .forEach(id => set(id, montar(CFG.trades,'Todos os trades')));
   set('f-cat-vis',        montar(CFG.tipos,'Selecione...'));
   set('acomp-filter-cat', montar(CFG.tipos,'Todos'));
@@ -2661,14 +2659,14 @@ function renderRecebimentoMensal() {
   `;
 }
 
-// ── REALIZAÇÃO DA CARTEIRA (contratado × arrecadado) ──
-function renderRealizacao() {
-  const el = document.getElementById('ger-real-content');
+// ── INDICADORES DOS CONTRATOS (contratado × arrecadado), na mesma seleção da tabela ──
+function renderContratosStats(list) {
+  const el = document.getElementById('ger-contratos-stats');
   if (!el) return;
-  const tr   = document.getElementById('ger-real-trade')?.value || '';
-  const list = tr ? acordos.filter(a => a.trade === tr) : acordos;
-  const ids  = new Set(list.map(a => a.id));
-  const ps   = parcelas.filter(p => ids.has(p.acordo_id));
+  const trFilt  = document.getElementById('ger-filter-trade')?.value || '';
+  const indFilt = (document.getElementById('ger-search-ind')?.value||'').trim();
+  const ids = new Set(list.map(a => a.id));
+  const ps  = parcelas.filter(p => ids.has(p.acordo_id));
 
   const contratado = list.reduce((s,a) => s + Number(a.valor_total||0), 0);
   const arrecadado = ps.reduce((s,p) => s + Number(p.valor_recebido||0), 0);
@@ -2676,11 +2674,12 @@ function renderRealizacao() {
   const pct        = contratado > 0 ? Math.min(arrecadado/contratado*100, 100) : 0;
   const cor        = pct >= 90 ? 'var(--success)' : pct >= 50 ? 'var(--amber)' : 'var(--danger)';
   const qRec       = ps.filter(p => p.status === 'recebido').length;
+  const rotulo     = [trFilt, indFilt].filter(Boolean).join(' · ') || 'carteira';
 
   el.innerHTML = `
     <div class="rz-grid">
       <div class="rz-kpi destaque">
-        <div class="rz-lbl">Contratado${tr ? ' · '+tr : ' · carteira'}</div>
+        <div class="rz-lbl">Contratado · ${rotulo}</div>
         <div class="rz-val">${fmt(contratado,true)}</div>
         <div class="rz-sub">${list.length} acordo${list.length!==1?'s':''} · ${ps.length} parcela${ps.length!==1?'s':''}</div>
       </div>
@@ -2692,14 +2691,10 @@ function renderRealizacao() {
       <div class="rz-kpi">
         <div class="rz-lbl">Saldo a arrecadar</div>
         <div class="rz-val" style="color:${saldo>0?'var(--danger)':'var(--success)'}">${fmt(saldo,true)}</div>
-        <div class="rz-sub">${pct.toFixed(1)}% da carteira realizada</div>
+        <div class="rz-sub">${pct.toFixed(1)}% desta seleção realizado</div>
       </div>
     </div>
-    <div class="rz-bar-wrap"><div class="rz-bar" style="width:${pct.toFixed(1)}%;background:${cor}"></div></div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-top:6px">
-      <span>${fmt(arrecadado)} arrecadado</span>
-      <span>${fmt(contratado)} contratado</span>
-    </div>`;
+    <div class="rz-bar-wrap"><div class="rz-bar" style="width:${pct.toFixed(1)}%;background:${cor}"></div></div>`;
 }
 
 // ── RENDER GERENCIAL ──
@@ -2722,7 +2717,7 @@ function renderGerencial() {
     if (mesSel) mesSel.value = opt ? mesAtual : 'Out/26';
   }
   renderRecebimentoMensal();
-  renderRealizacao();
+  renderContratosStats(list);
 
   const total = list.reduce((s,a)=>s+Number(a.valor_total||0),0);
   const pctMeta = Math.min(total/META*100,100);
