@@ -926,6 +926,89 @@ img,svg{max-width:100%;}
   <!-- Lista rápida de acordos lançados -->
   <div class="card">
     <div class="card-head">
+      <div class="card-title">Acordos lançados</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="filter-industria-list" oninput="renderListaAcordos()" placeholder="Buscar indústria..." style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);font-family:var(--font);width:150px">
+        <select id="filter-trade-list" onchange="renderListaAcordos()" style="font-size:12px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);font-family:var(--font)">
+          <option value="">Todos os trades</option>
+        </select>
+        <div class="card-badge" id="badge-total-acordos">0 acordos</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="atab">
+        <thead>
+          <tr>
+            <th>Acordo</th><th>Trade</th><th>Indústria</th>
+            <th>Tipo de ação</th><th>Valor total</th><th>Parcelas</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="lista-acordos-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PAGE 2 · ACOMPANHAMENTO
+══════════════════════════════════════ -->
+<div class="page" id="page-acompanhar">
+<div class="container">
+
+  <div class="row row-2 mb">
+    <div class="meta-card">
+      <button class="meta-edit" onclick="abrirEditMeta()" title="Editar meta anual">&#9998;</button>
+      <div class="meta-label">Meta anual da carteira</div>
+      <div class="meta-value" id="meta-val-acomp">R$ 14.000.000</div>
+      <div class="meta-sub">Progresso consolidado de todos os trades</div>
+      <div class="meta-bar-wrap">
+        <div class="meta-bar" id="meta-bar-acomp" style="width:0%"></div>
+      </div>
+      <div class="meta-pct" id="meta-pct-acomp">Calculando...</div>
+    </div>
+    <div class="card" style="overflow:visible">
+      <div class="card-head">
+        <div class="card-title">Filtros de acompanhamento</div>
+      </div>
+      <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+          <label>Trade</label>
+          <select id="acomp-filter-trade" onchange="renderAcompanhamento()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+          <label>Status do plano</label>
+          <select id="acomp-filter-status" onchange="renderAcompanhamento()">
+            <option value="">Todos</option>
+            <option>Reunião inicial</option>
+            <option>VB analisado</option>
+            <option>VB enviado ao Compras</option>
+            <option>Lojas na Smarkett</option>
+            <option>Acordo criado</option>
+            <option>Plano Ativo</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0;flex:1;min-width:130px">
+          <label>Tipo de ação</label>
+          <select id="acomp-filter-cat" onchange="renderAcompanhamento()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="acomp-list"></div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PAGE 3 · PAINEL GERENCIAL
+══════════════════════════════════════ -->
 <div class="page" id="page-gerencial">
 <div class="ger-page">
 
@@ -2785,9 +2868,7 @@ function renderGerencial() {
       }
     }
   });
-  });
   } // end Chart guard
-
 }
 
 async function salvarStatus() {
