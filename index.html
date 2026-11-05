@@ -2477,7 +2477,12 @@ function renderAcompanhamento() {
             <div style="font-size:10px;color:var(--gray)">Saldo</div>
             <div style="font-size:13px;font-weight:900;color:${totalPend>0?'var(--danger)':'var(--success)'}">${fmt(totalPend,true)}</div>
           </div>
-          <button class="btn btn-sm btn-primary" onclick="openStatusModal('${a.id}')">📊 Pipeline</button>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-sm btn-primary" onclick="openStatusModal('${a.id}')">📊 Pipeline</button>
+            ${a.planograma_url
+              ? `<a class="btn btn-sm btn-ghost" href="${a.planograma_url}" target="_blank" title="Abrir plano trade: ${a.planograma_nome||'anexo'}">📎 Plano trade</a>`
+              : `<span class="btn btn-sm btn-ghost" style="opacity:.4;cursor:default" title="Sem anexo de plano trade">📎 Sem anexo</span>`}
+          </div>
         </div>
       </div>
 
