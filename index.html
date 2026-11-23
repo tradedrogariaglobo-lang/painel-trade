@@ -1448,20 +1448,27 @@ let editingParcId = null;
 
 // ── API ──
 const USE_SB = SUPABASE_URL !== 'SEU_URL';
+let writesEmAndamento = 0, ultimaEscrita = 0;
 async function sbFetch(path, opts={}) {
-  const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    ...opts,
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': opts.prefer || 'return=representation',
-      ...(opts.headers||{})
-    }
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const t = await r.text();
-  return t ? JSON.parse(t) : [];
+  const escrita = opts.method && opts.method !== 'GET';
+  if (escrita) writesEmAndamento++;
+  try {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      ...opts,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': opts.prefer || 'return=representation',
+        ...(opts.headers||{})
+      }
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const t = await r.text();
+    return t ? JSON.parse(t) : [];
+  } finally {
+    if (escrita) { writesEmAndamento--; ultimaEscrita = Date.now(); }
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1766,13 +1773,12 @@ async function loadAll() {
     parcelas = JSON.parse(localStorage.getItem('ат_parcelas') || '[]');
     return;
   }
-  try {
-    [acordos, parcelas] = await Promise.all([
-      sbFetch('acordos_trade?order=criado_em.desc'),
-      sbFetch('parcelas_acordo?order=numero.asc')
-    ]);
-    visibilidades = await sbFetch('visibilidades_acordo?order=criado_em.asc').catch(()=>[]);
-  } catch(e) { console.error(e); acordos=[]; parcelas=[]; visibilidades=[]; }
+  const [a, p] = await Promise.all([
+    sbFetch('acordos_trade?order=criado_em.desc'),
+    sbFetch('parcelas_acordo?order=numero.asc')
+  ]);
+  acordos = a; parcelas = p;
+  try { visibilidades = await sbFetch('visibilidades_acordo?order=criado_em.asc'); } catch(e) { /* mantém as atuais */ }
 }
 
 function saveLocal() {
@@ -1828,7 +1834,7 @@ const PRIO_DEMO = ['alta','media','baixa'];
 // CRUD Supabase / localStorage para tarefas
 async function loadTarefas() {
   if (!USE_SB) { tarefas = JSON.parse(localStorage.getItem('kb_tarefas')||'[]'); return; }
-  try { tarefas = await sbFetch('kb_tarefas?order=criado_em.desc'); } catch(e){ tarefas=[]; }
+  tarefas = await sbFetch('kb_tarefas?order=criado_em.desc');
 }
 async function insertTarefa(d) {
   if (!USE_SB) {
@@ -2045,6 +2051,7 @@ function showPage(id) {
   if (id==='gerencial')  renderGerencial();
   if (id==='config')     { if (cfgLiberado) renderConfig(); }
   updateMeta();
+  refreshData();
 }
 
 // ── META ──
@@ -2320,7 +2327,7 @@ function renderListaAcordos() {
 }
 
 // ── RENDER ACOMPANHAMENTO ──
-function renderAcompanhamento() {
+function _renderAcompanhamento() {
   const trFilt  = document.getElementById('acomp-filter-trade').value;
   const stFilt  = document.getElementById('acomp-filter-status').value;
   const catFilt = document.getElementById('acomp-filter-cat').value;
@@ -2523,6 +2530,19 @@ function renderAcompanhamento() {
   const lbl = document.getElementById('meta-pct-acomp');
   if (bar) bar.style.width=pctMeta.toFixed(1)+'%';
   if (lbl) lbl.textContent=fmt(totalContratado,true)+' contratados · '+pctMeta.toFixed(1)+'% da meta';
+}
+
+function renderAcompanhamento() {
+  const abertos = [...document.querySelectorAll('.parc-table-wrap')]
+    .filter(e => e.style.display === 'block').map(e => e.id);
+  _renderAcompanhamento();
+  abertos.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = 'block';
+    const b = document.querySelector(`[onclick="toggleParcTable('${id}',this)"]`);
+    if (b) b.innerHTML = '▴ Ocultar parcelas';
+  });
 }
 
 // ── TOGGLE TABELA DE PARCELAS ──
@@ -3052,10 +3072,39 @@ function carregarDemoData() {
   parcelas = BASE_PARCELAS.map(p => ({...p}));
 }
 
+// ── ATUALIZAÇÃO AUTOMÁTICA ──
+let refreshing = false;
+
+async function refreshData() {
+  if (!USE_SB || refreshing) return;
+  // não atualiza com modal aberto, card sendo arrastado ou gravação em andamento
+  if (document.querySelector('.modal-bg.open') || kbDragId) return;
+  if (writesEmAndamento > 0 || Date.now() - ultimaEscrita < 4000) return;
+  refreshing = true;
+  try {
+    const inicio = Date.now();
+    await Promise.all([loadAll(), loadTarefas()]);
+    // se alguém gravou enquanto buscávamos, descarta e deixa para a próxima rodada
+    if (writesEmAndamento > 0 || ultimaEscrita > inicio) return;
+    // meta / listas da configuração (não mexe se a aba Configurações está aberta)
+    if (!document.getElementById('page-config')?.classList.contains('active')) {
+      await loadConfig(); aplicarConfig();
+    }
+    updateMeta();
+    if (document.getElementById('page-lancar')?.classList.contains('active')) renderListaAcordos();
+    refreshActivePage();
+  } catch (e) { console.error('Falha ao atualizar', e); }
+  finally { refreshing = false; }
+}
+
+setInterval(refreshData, 30000);                       // a cada 30s
+window.addEventListener('focus', refreshData);         // ao voltar para a janela
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshData(); });
+
 // ── INIT ──
 (async()=>{
   if (USE_SB) {
-    await Promise.all([loadAll(), loadTarefas()]);
+    try { await Promise.all([loadAll(), loadTarefas()]); } catch(e) { console.error(e); }
     if (acordos.length === 0) carregarDemoData();
     if (tarefas.length === 0) carregarDemoTarefas();
   } else {
