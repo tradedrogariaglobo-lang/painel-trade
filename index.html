@@ -6,6 +6,7 @@
 <title>Acordos Trade · Drogaria Globo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23EF3747'/%3E%3Cpath d='M32 47C14 39 16 22 25 21c3-.3 6 1.5 7 4 1-2.500 4-4.300 7-4 9 1 11 18-7 26z' fill='%23fff'/%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 
@@ -541,6 +542,9 @@ header.header{background:var(--royal);height:64px;padding:0 24px;border-bottom:2
 .ger-table-search:focus{border-color:var(--royal);}
 .ger-table-select{font-family:var(--font);font-size:12px;padding:7px 10px;border:1px solid var(--border);
   border-radius:var(--radius-sm);background:var(--white);color:var(--gray);cursor:pointer;}
+.btn-xls{font-family:var(--font);font-size:12px;font-weight:700;background:var(--ice);color:var(--royal);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;}
+.btn-xls:hover{background:#d4e5f9;border-color:var(--blue);}
+.vis-export-row{display:flex;justify-content:flex-end;margin-top:10px;}
 .ger-table-scroll{max-height:380px;overflow-y:auto;overflow-x:auto;border-top:1px solid var(--border);}
 .ger-table-scroll::-webkit-scrollbar{width:6px;}
 .ger-table-scroll::-webkit-scrollbar-track{background:var(--ice);}
@@ -1090,6 +1094,9 @@ img,svg{max-width:100%;}
         <div class="ger-chart-compact" style="position:relative">
           <canvas id="chart-ger-status"></canvas>
           <div id="ger-vis-empty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;color:var(--gray);font-size:12px;line-height:1.5;padding:0 18px">Nenhum investimento de visibilidade lançado ainda.<br>Cadastre em "Lançar Acordo".</div>
+        </div>
+        <div class="vis-export-row">
+          <button class="btn-xls" onclick="exportarInvestimentoVisibilidade()" title="Exportar este painel para Excel">📥 Exportar Excel</button>
         </div>
       </div>
     </div>
@@ -2763,6 +2770,90 @@ function renderContratosStats(list) {
       </div>
     </div>
     <div class="rz-bar-wrap"><div class="rz-bar" style="width:${pct.toFixed(1)}%;background:${cor}"></div></div>`;
+}
+
+// ── EXPORTAR EXCEL · INVESTIMENTO POR VISIBILIDADE ──
+function exportarInvestimentoVisibilidade() {
+  if (typeof XLSX === 'undefined') { toast('Biblioteca de Excel não carregou. Verifique a conexão.'); return; }
+
+  const trFilt = document.getElementById('ger-vis-trade')?.value || '';   // mesmo filtro do painel
+  const acById = Object.fromEntries(acordos.map(a=>[a.id,a]));
+  const vis    = visibilidades.filter(v => !trFilt || (acById[v.acordo_id]?.trade) === trFilt);
+  if (!vis.length) { toast('Nenhum investimento de visibilidade para exportar.'); return; }
+
+  const MONEY = '"R$" #,##0.00', PCT = '0.0%';
+  const val   = v => Number(v.valor||0);
+  const total = vis.reduce((s,v)=>s+val(v),0);
+  const ptc   = (a,b) => b>0 ? a/b : 0;
+  const cmp   = (a,b) => String(a||'').localeCompare(String(b||''),'pt-BR');
+
+  // Aplica formato numérico por coluna e adiciona linha TOTAL (com fórmula SUM)
+  function sheet(headers, rows, types, widths, totalCols) {
+    const aoa = [headers, ...rows];
+    const ws  = XLSX.utils.aoa_to_sheet(aoa);
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const r = aoa.length;
+    ws[XLSX.utils.encode_cell({r,c:0})] = {t:'s', v:'TOTAL'};
+    totalCols.forEach(c => {
+      const col = XLSX.utils.encode_col(c);
+      ws[XLSX.utils.encode_cell({r,c})] = {t:'n', v: rows.reduce((sum,row)=>sum+(Number(row[c])||0),0), f:`SUM(${col}2:${col}${r})`};
+    });
+    range.e.r = r;
+    ws['!ref'] = XLSX.utils.encode_range(range);
+    for (let R=1; R<=range.e.r; R++) for (let C=0; C<=range.e.c; C++) {
+      const cell = ws[XLSX.utils.encode_cell({r:R,c:C})];
+      if (!cell || cell.t!=='n') continue;
+      cell.z = types[C]==='m' ? MONEY : types[C]==='p' ? PCT : '0';
+    }
+    ws['!cols'] = widths.map(w=>({wch:w}));
+    ws['!autofilter'] = {ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length,c:headers.length-1}})};
+    return ws;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Aba 1 · o que o gráfico mostra: valor investido por tipo de visibilidade ──
+  const porTipo = {};
+  vis.forEach(v => { const k=v.tipo||'Sem tipo'; (porTipo[k]=porTipo[k]||{q:0,v:0}); porTipo[k].q++; porTipo[k].v+=val(v); });
+  const rowsTipo = Object.keys(porTipo).sort((x,y)=>porTipo[y].v-porTipo[x].v)
+    .map(k=>[k, porTipo[k].q, porTipo[k].v, ptc(porTipo[k].v,total)]);
+  XLSX.utils.book_append_sheet(wb, sheet(
+    ['Tipo de visibilidade','Nº lançamentos','Valor investido','% do total'],
+    rowsTipo, ['','n','m','p'], [30,16,20,12], [1,2,3]
+  ), 'Por Visibilidade');
+
+  // ── Aba 2 · cada lançamento, com o acordo de origem ──
+  const rowsLanc = vis.slice().sort((x,y)=>
+      cmp(x.tipo,y.tipo) || cmp(acById[x.acordo_id]?.nome, acById[y.acordo_id]?.nome)
+    ).map(v=>{
+      const a = acById[v.acordo_id] || {};
+      return [v.tipo||'', val(v), a.n_acordo||'', a.nome||'—', a.trade||'', a.industria||'', a.cat_visibilidade||'',
+              fmtDataBRCurta(v.vigencia_inicio), fmtDataBRCurta(v.vigencia_fim)];
+    });
+  XLSX.utils.book_append_sheet(wb, sheet(
+    ['Tipo de visibilidade','Valor investido','Nº acordo','Acordo','Trade','Indústria','Tipo de ação','Vigência início','Vigência fim'],
+    rowsLanc, ['','m','','','','','','',''], [28,18,12,34,12,24,20,15,15], [1]
+  ), 'Lançamentos');
+
+  // ── Aba 3 · trade × tipo de visibilidade ──
+  const trades = [...new Set(vis.map(v=>acById[v.acordo_id]?.trade).filter(Boolean))].sort(cmp);
+  const tipos  = Object.keys(porTipo).sort((x,y)=>porTipo[y].v-porTipo[x].v);
+  const rowsMx = trades.map(t=>{
+    const linha = tipos.map(tp=>vis.filter(v=>acById[v.acordo_id]?.trade===t && (v.tipo||'Sem tipo')===tp).reduce((s,v)=>s+val(v),0));
+    return [t, ...linha, linha.reduce((a,b)=>a+b,0)];
+  });
+  const headMx = ['Trade', ...tipos, 'Total'];
+  XLSX.utils.book_append_sheet(wb, sheet(
+    headMx, rowsMx, headMx.map((h,i)=>i===0?'':'m'), headMx.map((h,i)=>i===0?16:Math.max(16,h.length+2)),
+    headMx.map((h,i)=>i).slice(1)
+  ), 'Trade x Visibilidade');
+
+  const hoje  = new Date().toISOString().slice(0,10);
+  const sufixo = trFilt ? '_'+trFilt.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_') : '';
+  try {
+    XLSX.writeFile(wb, `Investimento_por_Visibilidade${sufixo}_${hoje}.xlsx`);
+    toast('✅ Excel exportado!');
+  } catch(e) { console.error(e); toast('Erro ao gerar o Excel.'); }
 }
 
 // ── RENDER GERENCIAL ──
