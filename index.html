@@ -2772,13 +2772,20 @@ function renderContratosStats(list) {
     <div class="rz-bar-wrap"><div class="rz-bar" style="width:${pct.toFixed(1)}%;background:${cor}"></div></div>`;
 }
 
+// ── Tipos de visibilidade que NÃO aparecem no painel "Investimento por visibilidade" (nem no Excel dele) ──
+const VIS_OCULTAS_PAINEL = ['ACOES'];   // "AÇÕES" (comparação sem acento/caixa; não afeta "AÇÕES DE EXPERIÊNCIA COM SHOPPER")
+function visVisivelNoPainel(v) {
+  const k = String(v.tipo||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  return !VIS_OCULTAS_PAINEL.includes(k);
+}
+
 // ── EXPORTAR EXCEL · INVESTIMENTO POR VISIBILIDADE ──
 function exportarInvestimentoVisibilidade() {
   if (typeof XLSX === 'undefined') { toast('Biblioteca de Excel não carregou. Verifique a conexão.'); return; }
 
   const trFilt = document.getElementById('ger-vis-trade')?.value || '';   // mesmo filtro do painel
   const acById = Object.fromEntries(acordos.map(a=>[a.id,a]));
-  const vis    = visibilidades.filter(v => !trFilt || (acById[v.acordo_id]?.trade) === trFilt);
+  const vis    = visibilidades.filter(v => visVisivelNoPainel(v) && (!trFilt || (acById[v.acordo_id]?.trade) === trFilt));
   if (!vis.length) { toast('Nenhum investimento de visibilidade para exportar.'); return; }
 
   const MONEY = '"R$" #,##0.00', PCT = '0.0%';
@@ -3005,7 +3012,7 @@ function renderGerencial() {
   const visTrFilt = document.getElementById('ger-vis-trade')?.value || '';
   const acordoTradeMap = {};
   acordos.forEach(a => { acordoTradeMap[a.id] = a.trade; });
-  const visFiltrada = visibilidades.filter(v => !visTrFilt || acordoTradeMap[v.acordo_id] === visTrFilt);
+  const visFiltrada = visibilidades.filter(v => visVisivelNoPainel(v) && (!visTrFilt || acordoTradeMap[v.acordo_id] === visTrFilt));
   const visMap = {};
   visFiltrada.forEach(v => { visMap[v.tipo] = (visMap[v.tipo] || 0) + Number(v.valor || 0); });
   const visKeys = Object.keys(visMap);
